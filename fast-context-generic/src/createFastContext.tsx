@@ -6,10 +6,15 @@ import React, {
   useSyncExternalStore,
 } from "react";
 
-export default function createFastContext<Store>(initialState: Store) {
+import { StateValue, StateValueKeys } from "./App";
+
+export default function createFastContext<Store extends Object>(
+  initialState: Store
+) {
   function useStoreData(): {
     get: () => Store;
     set: (value: Partial<Store>) => void;
+    createInput: (id: string) => void;
     subscribe: (callback: () => void) => () => void;
   } {
     const store = useRef(initialState);
@@ -19,8 +24,27 @@ export default function createFastContext<Store>(initialState: Store) {
     const subscribers = useRef(new Set<() => void>());
 
     const set = useCallback((value: Partial<Store>) => {
-      store.current = { ...store.current, ...value };
+      const currentKey = Object.keys(value)[0] as keyof Store;
+      if (!store.current.hasOwnProperty(currentKey)) {
+        store.current = {
+          ...store.current,
+          [currentKey]: { first: "", last: "" },
+        };
+      }
+      const currentObj = store.current[currentKey] as Partial<StateValue>;
+      const newValues = { ...currentObj, ...(value[currentKey] as StateValue) };
+      //  console.info("currentKey: ", currentKey);
+      // console.info("currentObj: ", currentObj);
+      // console.info("newValues: ", newValues);
+      // console.info("value: ", value);
+      store.current = { ...store.current, [currentKey]: newValues };
+      console.info("store.current: ", store.current);
       subscribers.current.forEach((callback) => callback());
+    }, []);
+
+    const createInput = useCallback((id: string) => {
+      let inputsCopy = structuredClone(store.current);
+      inputsCopy = { ...inputsCopy, id: { first: "", last: "" } };
     }, []);
 
     const subscribe = useCallback((callback: () => void) => {
@@ -31,6 +55,7 @@ export default function createFastContext<Store>(initialState: Store) {
     return {
       get,
       set,
+      createInput,
       subscribe,
     };
   }
@@ -58,7 +83,7 @@ export default function createFastContext<Store>(initialState: Store) {
     const state = useSyncExternalStore(
       store.subscribe,
       () => selector(store.get()),
-      () => selector(initialState),
+      () => selector(initialState)
     );
 
     return [state, store.set];
