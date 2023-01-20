@@ -14,7 +14,7 @@ export default function createFastContext<Store extends Object>(
   function useStoreData(): {
     get: () => Store;
     set: (value: Partial<Store>) => void;
-    createInput: (id: string) => void;
+    createInput: () => void;
     subscribe: (callback: () => void) => () => void;
   } {
     const store = useRef(initialState);
@@ -25,26 +25,22 @@ export default function createFastContext<Store extends Object>(
 
     const set = useCallback((value: Partial<Store>) => {
       const currentKey = Object.keys(value)[0] as keyof Store;
-      if (!store.current.hasOwnProperty(currentKey)) {
-        store.current = {
-          ...store.current,
-          [currentKey]: { first: "", last: "" },
-        };
-      }
-      const currentObj = store.current[currentKey] as Partial<StateValue>;
-      const newValues = { ...currentObj, ...(value[currentKey] as StateValue) };
-      //  console.info("currentKey: ", currentKey);
-      // console.info("currentObj: ", currentObj);
-      // console.info("newValues: ", newValues);
-      // console.info("value: ", value);
+      const currentObj = store.current[currentKey];
+      const newValues = {
+        ...currentObj,
+        ...value[currentKey],
+      };
       store.current = { ...store.current, [currentKey]: newValues };
+
       console.info("store.current: ", store.current);
       subscribers.current.forEach((callback) => callback());
     }, []);
 
-    const createInput = useCallback((id: string) => {
+    const createInput = useCallback(() => {
       let inputsCopy = structuredClone(store.current);
-      inputsCopy = { ...inputsCopy, id: { first: "", last: "" } };
+      const id = "input" + (Object.keys(inputsCopy).length + 1).toString();
+      store.current = { ...inputsCopy, [id]: { first: "", last: "" } };
+      subscribers.current.forEach((callback) => callback());
     }, []);
 
     const subscribe = useCallback((callback: () => void) => {
@@ -74,7 +70,7 @@ export default function createFastContext<Store extends Object>(
 
   function useStore<SelectorOutput>(
     selector: (store: Store) => SelectorOutput
-  ): [SelectorOutput, (value: Partial<Store>) => void] {
+  ): [SelectorOutput, (value: Partial<Store>) => void, () => void] {
     const store = useContext(StoreContext);
     if (!store) {
       throw new Error("Store not found");
@@ -86,7 +82,7 @@ export default function createFastContext<Store extends Object>(
       () => selector(initialState)
     );
 
-    return [state, store.set];
+    return [state, store.set, store.createInput];
   }
 
   return {

@@ -10,25 +10,20 @@ import createFastContext from "./createFastContext";
 // rewritten
 export type StateValueKeys = "first" | "last";
 
-export type StateValue = Record<StateValueKeys, string>;
+export type StateValue = Record<"tags", string>;
 
 type Store = {
   [id: string]: Partial<StateValue>;
 };
 
 type TextInputProps = {
-  value: StateValueKeys;
+  value: "tags";
   id: keyof Store;
 };
 
 const initialTokens = {
   input1: {
-    first: "willy",
-    last: "mays",
-  },
-  input2: {
-    first: "ricky",
-    last: "robinson",
+    tags: "willy",
   },
 } as Store;
 
@@ -78,41 +73,32 @@ const DisplayContainer = ({ id }: { id: string }) => {
   );
 };
 
-const ContentContainer = ({ parameters }: { parameters: string[] }) => {
+const ContentContainer = () => {
+  const [store, setStore, createInput] = useStore((store) => store);
   return (
     <div className="container">
       <h5>ContentContainer</h5>
-      {parameters.map((id) => (
-        <FormContainer id={id} key={"form-" + id} />
-      ))}
-      {parameters.map((id) => (
-        <DisplayContainer id={id} key={"display-" + id} />
+      <button type="button" onClick={() => createInput()}>
+        Add New
+      </button>
+      {Object.keys(store).map((obj, idx) => (
+        <div className="input-display-container">
+          <TextInput value="tags" id={obj} key={"inputfirst-" + idx} />
+        </div>
       ))}
     </div>
   );
 };
 
-const App = () => {
-  const [parameters, setParameters] = useState<string[]>(["input1"]);
+const Application = () => {
   return (
     <Provider>
       <div className="container">
         <h5>App</h5>
-        <button
-          type="button"
-          onClick={() =>
-            setParameters((prev) => [
-              ...prev,
-              "input" + (prev.length += 1).toString(),
-            ])
-          }
-        >
-          Add New
-        </button>
-        <ContentContainer parameters={parameters} />
+        <ContentContainer />
       </div>
     </Provider>
   );
 };
 
-export default App;
+export default Application;
